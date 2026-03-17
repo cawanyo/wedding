@@ -381,20 +381,21 @@ export async function createCustomQuestion(categoryId: string, content: string, 
 
 export async function updateCoupleGoal(
   goalId: string, 
-  data: { title: string; description?: string; deadline?: string }
+  data: { title: string; description?: string; deadline?: string; progress: number }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) throw new Error("Non authentifié");
 
-  const updatedGoal = await prisma.coupleGoal.update({
+  const updatedGoal =  await prisma.coupleGoal.update({
     where: { id: goalId },
     data: {
       title: data.title,
       description: data.description,
       deadline: data.deadline ? new Date(data.deadline) : null,
+      progress: Number(data.progress), // Conversion explicite en nombre
+      done: Number(data.progress) === 100,
     },
   });
-
   revalidatePath("/dashboard/couple");
   return updatedGoal;
 }

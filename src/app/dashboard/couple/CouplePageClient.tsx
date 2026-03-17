@@ -2,7 +2,7 @@
 
 import { Key, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, progress } from 'framer-motion'
 import {
   Heart, Users, Plus, CheckCircle, Target, MessageSquare,
   BookOpen, TrendingUp, Copy, Check, Calendar,
@@ -48,7 +48,7 @@ type Question = { id: string; content: string; answers: {
   createdAt: string | number | Date; userId: string; content: string; user: { name: string | null } 
 }[] }
 type Category = { id: string; title: string; questions: Question[] }
-type Goal = { id: string; title: string; description: string | null; done: boolean; deadline: Date | null; user: { name: string | null } }
+type Goal = { id: string; title: string; description: string | null; done: boolean; deadline: Date | null; user: { name: string | null }, progress: number }
 type Checkin = { id: string; score: number; feeling: string | null; week: Date; user: { name: string | null } }
 type Reflection = { id: string; mood: number; gratitude: string | null; note: string | null; date: Date; user: { name: string | null } }
 type Couple = {
@@ -79,7 +79,7 @@ export function CouplePageClient({
   const [inviteError, setInviteError] = useState('')
   const [reflectionModal, setReflectionModal] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [goalForm, setGoalForm] = useState({ title: '', description: '', deadline: '' })
+  const [goalForm, setGoalForm] = useState({ title: '', description: '', deadline: '', progress: 0 })
   const [checkinForm, setCheckinForm] = useState({ score: 7, feeling: '', improvement: '', gratitude: '' })
   const [reflectionForm, setReflectionForm] = useState({ mood: 3, gratitude: '', note: '' })
   const [answerForms, setAnswerForms] = useState<Record<string, string>>({})
@@ -103,7 +103,8 @@ export function CouplePageClient({
     setGoalForm({
       title: goal.title,
       description: goal.description || '',
-      deadline: goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : ''
+      deadline: goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : '',
+      progress: goal.progress || 0
     });
     setGoalModal(true);
   };
@@ -120,7 +121,7 @@ export function CouplePageClient({
     }
   
     // Reset
-    setGoalForm({ title: '', description: '', deadline: '' });
+    setGoalForm({ title: '', description: '', deadline: '' , progress: 0});
     setEditingGoal(null);
     setGoalModal(false);
     router.refresh();
@@ -177,7 +178,7 @@ export function CouplePageClient({
   const handleAddGoal = async () => {
     if (!couple || !goalForm.title) return
     await addCoupleGoal(couple.id, goalForm)
-    setGoalForm({ title: '', description: '', deadline: '' })
+    setGoalForm({ title: '', description: '', deadline: '' , progress:0})
     setGoalModal(false)
     router.refresh()
   }
@@ -482,6 +483,7 @@ export function CouplePageClient({
                 const isExpanded = expandedQuestions[q.id];
                 
                 return (
+                  
                   <Card key={q.id} className="border-l-4 border-l-purple-500 overflow-hidden">
                     <div className="flex justify-between items-start mb-4">
                       <p className="font-bold text-gray-900 flex-1">{q.content}</p>
@@ -535,6 +537,7 @@ export function CouplePageClient({
                       <Button size="sm" onClick={() => handleAnswer(q.id)}>Répondre</Button>
                     </div>
                   </Card>
+                  
                 );
               })}
             </div>
@@ -657,6 +660,19 @@ export function CouplePageClient({
                       <span>{g.user.name}</span>
                       {g.deadline && <span className="flex items-center gap-0.5"><Calendar size={10} /> {new Date(g.deadline).toLocaleDateString('fr-FR')}</span>}
                     </div>
+                    <div className="mt-2 mb-4">
+                      <div className="flex justify-between text-[10px] mb-1">
+                        <span className="text-purple-600 font-medium">{goalForm.progress}% atteint</span>
+                        {goalForm.deadline && <span>Échéance : {new Date(goalForm.deadline).toLocaleDateString()}</span>}
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div 
+                          className="bg-purple-500 h-1.5 rounded-full transition-all duration-500" 
+                          style={{ width: `${goalForm.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
                   </div>
 
                   <Button 
@@ -711,6 +727,25 @@ export function CouplePageClient({
       )}
 
       <Modal open={goalModal} onClose={() => setGoalModal(false)} title="Nouvel objectif">
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-2">
+            Niveau d'avancement : {goalForm.progress}%
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="100" 
+            step="5"
+            value={goalForm.progress}
+            onChange={e => setGoalForm(p => ({ ...p, progress: parseInt(e.target.value) }))}
+            className="w-full accent-purple-600 h-2 bg-gray-200 rounded-lg cursor-pointer"
+          />
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+            <span>Début</span>
+            <span>En cours</span>
+            <span>Atteint</span>
+          </div>
+        </div>
         <div className="space-y-4">
           <Input label="Titre" placeholder="Ex: Voyager au Japon" value={goalForm.title}
             onChange={e => setGoalForm(p => ({ ...p, title: e.target.value }))} />
@@ -723,7 +758,9 @@ export function CouplePageClient({
             onChange={e => setGoalForm(p => ({ ...p, deadline: e.target.value }))} />
           <div className="flex gap-3">
             <Button variant="ghost" onClick={() => setGoalModal(false)} className="flex-1">Annuler</Button>
-            <Button onClick={handleAddGoal} className="flex-1">Ajouter</Button>
+            <Button onClick={handleSaveGoal} className="flex-1">
+              {editingGoal ? "Enregistrer les modifications" : "Ajouter l'objectif"}
+            </Button>
           </div>
         </div>
       </Modal>
