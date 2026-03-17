@@ -22,7 +22,7 @@ export function Sidebar() {
   const { data: session } = useSession()
 
   return (
-    <aside className="hidden md:flex flex-col w-64 min-h-screen bg-white border-r border-gray-100 shadow-sm">
+    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-white border-r border-gray-100 shadow-sm">
       <div className="p-6">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center">

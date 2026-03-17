@@ -6,6 +6,17 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { randomBytes } from 'crypto'
 import { createNotification } from '../notifications'
+import Pusher from "pusher";
+
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID!,
+  key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
+  secret: process.env.PUSHER_SECRET!,
+  cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+  useTLS: true,
+});
+
+
 
 async function getSession() {
   return getServerSession(authOptions)
@@ -132,20 +143,14 @@ export async function submitAnswer(data: { questionId: string; coupleId: string;
   const session = await getSession()
   if (!session?.user?.id) return { error: 'Non autorisé' }
 
-  // const existing = await prisma.answer.findFirst({
-  //   where: { questionId: data.questionId, userId: session.user.id, coupleId: data.coupleId },
-  // })
-
-  // if (existing) {
-  //   await prisma.answer.update({
-  //     where: { id: existing.id },
-  //     data: { content: data.content },
-  //   })
-  // } else {
+  
     await prisma.answer.create({
       data: { ...data, userId: session.user.id },
     })
-  // }
+    await pusher.trigger(`couple-${data.coupleId}`, "new-answer", {
+      questionId : data.questionId,
+      answer: data.content,
+    });
 
   revalidatePath('/dashboard/couple')
   return { success: true }

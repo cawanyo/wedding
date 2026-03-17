@@ -28,6 +28,8 @@ import {
   createCategory,
   updateCoupleGoal
 } from '@/actions/couple'
+import Pusher from 'pusher-js'
+import { revalidatePath } from 'next/cache'
 
 const STATUS_LABELS: Record<string, string> = {
   UNDEFINED: 'Non défini',
@@ -97,6 +99,8 @@ export function CouplePageClient({
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
+
+  
   // 2. Fonction pour ouvrir le modal en mode édition
   const openEditGoal = (goal: Goal) => {
     setEditingGoal(goal);
@@ -251,6 +255,32 @@ export function CouplePageClient({
     }
   };
 
+
+  useEffect(() => {
+    
+    if (!couple?.id) return
+    
+    // Initialisation de Pusher
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    })
+
+    // S'abonner au canal du couple
+    const channel = pusher.subscribe(`couple-${couple.id}`)
+
+    // Écouter les nouveaux messages ou objectifs
+    channel.bind('new-answer', () => {
+      revalidatePath('/dashboard/couple'); // Rafraîchit les Server Components sans recharger la page
+    })
+
+    channel.bind('goal-updated', () => {
+      router.refresh()
+    })
+
+    return () => {
+      pusher.unsubscribe(`couple-${couple.id}`)
+    }
+  }, [couple?.id, router])
   
 
   if (!couple) {

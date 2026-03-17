@@ -1,38 +1,48 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Heart, Gem, User } from 'lucide-react'
-import { cn } from '@/lib/utils'
-
-const navItems = [
-  { href: '/dashboard', label: 'Accueil', icon: LayoutDashboard },
-  { href: '/dashboard/wedding', label: 'Mariage', icon: Gem },
-  { href: '/dashboard/couple', label: 'Couple', icon: Heart },
-  { href: '/dashboard/profile', label: 'Profil', icon: User },
-]
+import { usePathname } from 'next/navigation'
+import { LayoutDashboard, Heart, CalendarDays, User, LogOut } from 'lucide-react' // Ajout de LogOut
+import { signOut } from 'next-auth/react' // Import pour la déconnexion
 
 export function BottomNav() {
   const pathname = usePathname()
 
+  const navItems = [
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
+    { href: '/dashboard/wedding', icon: CalendarDays, label: 'Mariage' },
+    { href: '/dashboard/couple', icon: Heart, label: 'Couple' },
+    { href: '/dashboard/profile', icon: User, label: 'Profil' },
+  ]
+
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 z-40 safe-bottom">
-      <div className="flex">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 py-2 z-50">
+      <div className="flex justify-around items-center">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href
           return (
-            <Link key={href} href={href} className="flex-1">
-              <div className={cn(
-                'flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors',
-                active ? 'text-purple-600' : 'text-gray-400'
-              )}>
-                <Icon size={20} />
-                <span>{label}</span>
-                {active && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-8 bg-purple-600 rounded-full" />}
-              </div>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center p-2 rounded-xl transition-colors ${
+                isActive ? 'text-purple-600 bg-purple-50' : 'text-gray-400'
+              }`}
+            >
+              <Icon size={20} />
+              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
             </Link>
           )
         })}
+        
+        {/* Bouton de déconnexion ajouté pour le mobile */}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex flex-col items-center p-2 rounded-xl text-gray-400 hover:text-red-500"
+        >
+          <LogOut size={20} />
+          <span className="text-[10px] mt-1 font-medium">Quitter</span>
+        </button>
       </div>
     </nav>
   )
