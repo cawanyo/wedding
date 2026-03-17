@@ -1,0 +1,310 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  avatar        String?
+  gender        String?
+  birthday      DateTime?
+  location      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  ownedProjects    WeddingProject[]  @relation("ProjectOwner")
+  projectMembers   ProjectMember[]
+  assignedTasks    Task[]            @relation("TaskAssignee")
+  comments         TaskComment[]
+  answers          Answer[]
+  dailyReflections DailyReflection[]
+  coupleGoals      CoupleGoal[]
+  coupleAsUser1    Couple[]          @relation("CoupleUser1")
+  coupleAsUser2    Couple[]          @relation("CoupleUser2")
+  weeklyCheckins   WeeklyCheckin[]
+  notifications    Notification[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============ WEDDING ============
+
+model WeddingProject {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  ownerId     String
+  weddingDate DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  owner   User            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members ProjectMember[]
+  steps   WeddingStep[]
+  finance FinanceRecord[]
+  vendors Vendor[]
+  guests  Guest[]
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("READER")
+  createdAt DateTime @default(now())
+
+  project WeddingProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model WeddingStep {
+  id          String    @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  dueDate     DateTime?
+  budgetLimit Float?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project WeddingProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+  finance FinanceRecord[]
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  stepId      String
+  title       String
+  description String?
+  assignedTo  String?
+  dueDate     DateTime?
+  budgetLimit Float?
+  realCost    Float?    @default(0)
+  status      String    @default("TODO")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  step     WeddingStep     @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  assignee User?           @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  comments TaskComment[]
+  finance  FinanceRecord[]
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FinanceRecord {
+  id        String   @id @default(cuid())
+  projectId String
+  stepId    String?
+  taskId    String?
+  label     String
+  amount    Float
+  type      String
+  createdAt DateTime @default(now())
+
+  project WeddingProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  step    WeddingStep?   @relation(fields: [stepId], references: [id])
+  task    Task?          @relation(fields: [taskId], references: [id])
+}
+
+model Vendor {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String
+  category  String
+  contact   String?
+  price     Float?
+  notes     String?
+
+  project WeddingProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Guest {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String
+  phone     String?
+  email     String?
+  confirmed Boolean @default(false)
+  table     String?
+
+  project WeddingProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ============ COUPLE ============
+
+model Couple {
+  id                 String   @id @default(cuid())
+  user1Id            String
+  user2Id            String?
+  inviteToken        String?  @unique
+  relationshipStatus String   @default("UNDEFINED")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user1       User              @relation("CoupleUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2       User?             @relation("CoupleUser2", fields: [user2Id], references: [id])
+  answers     Answer[]
+  goals       CoupleGoal[]
+  checkins    WeeklyCheckin[]
+  discussions Discussion[]
+  reflections DailyReflection[]
+}
+
+model QuestionCategory {
+  id        String     @id @default(cuid())
+  title     String
+  createdBy String?
+  questions Question[]
+}
+
+model Question {
+  id         String  @id @default(cuid())
+  categoryId String
+  content    String
+  isPublic   Boolean @default(true)
+  createdBy  String?
+
+  category    QuestionCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  answers     Answer[]
+  discussions Discussion[]
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String
+  userId     String
+  coupleId   String
+  content    String
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  couple   Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+}
+
+model Discussion {
+  id         String   @id @default(cuid())
+  questionId String
+  coupleId   String
+  message    String
+  authorId   String
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  couple   Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+}
+
+model DailyReflection {
+  id        String   @id @default(cuid())
+  userId    String
+  coupleId  String?
+  mood      Int
+  gratitude String?
+  note      String?
+  date      DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  couple Couple? @relation(fields: [coupleId], references: [id])
+}
+
+model CoupleGoal {
+  id          String    @id @default(cuid())
+  coupleId    String
+  userId      String
+  title       String
+  description String?
+  deadline    DateTime?
+  done        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WeeklyCheckin {
+  id          String   @id @default(cuid())
+  coupleId    String
+  userId      String
+  score       Int
+  feeling     String?
+  improvement String?
+  gratitude   String?
+  week        DateTime @default(now())
+
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ NOTIFICATIONS ============
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
