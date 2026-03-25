@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { signOut, useSession } from 'next-auth/react'
 import {
-  LayoutDashboard, Heart, Gem, User, LogOut, ChevronRight
+  LayoutDashboard, Heart, Gem, User, LogOut, ChevronRight, Compass
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/Avatar'
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/dashboard/wedding', label: 'Mariage', icon: Gem },
   { href: '/dashboard/couple', label: 'Notre couple', icon: Heart },
+  { href: '/dashboard/decouverte', label: 'Découverte de soi', icon: Compass },
   { href: '/dashboard/profile', label: 'Profil', icon: User },
 ]
 

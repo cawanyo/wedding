@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Heart, CalendarDays, User, LogOut } from 'lucide-react' // Ajout de LogOut
+import { LayoutDashboard, Heart, CalendarDays, User, LogOut, Compass } from 'lucide-react' // Ajout de LogOut
 import { signOut } from 'next-auth/react' // Import pour la déconnexion
 
 export function BottomNav() {
@@ -12,6 +12,7 @@ export function BottomNav() {
     { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
     { href: '/dashboard/wedding', icon: CalendarDays, label: 'Mariage' },
     { href: '/dashboard/couple', icon: Heart, label: 'Couple' },
+    { href: '/dashboard/decouverte', icon: Compass, label: 'Découverte' },
     { href: '/dashboard/profile', icon: User, label: 'Profil' },
   ]
 
