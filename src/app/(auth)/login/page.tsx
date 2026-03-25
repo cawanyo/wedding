@@ -58,13 +58,20 @@ export default function LoginPage() {
               {...register('email')}
               error={errors.email?.message}
             />
-            <Input
-              label="Mot de passe"
-              type="password"
-              placeholder="••••••••"
-              {...register('password')}
-              error={errors.password?.message}
-            />
+            <div>
+              <Input
+                label="Mot de passe"
+                type="password"
+                placeholder="••••••••"
+                {...register('password')}
+                error={errors.password?.message}
+              />
+              <div className="flex justify-end mt-1.5">
+                <Link href="/forgot-password" className="text-xs text-purple-500 hover:text-purple-700 font-medium hover:underline">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+            </div>
             {error && (
               <p className="text-sm text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>
             )}

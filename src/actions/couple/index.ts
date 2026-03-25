@@ -107,6 +107,8 @@ export async function createCoupleWithInvitation(invitedUserId: string) {
     link: '/dashboard/couple',
   })
 
+  await pusher.trigger(`user-${invitedUserId}`, 'couple:invitation', { coupleId: couple.id })
+
   revalidatePath('/dashboard/couple')
   return { success: true, couple, previousCouple: archivedCouple }
 }
@@ -166,6 +168,8 @@ export async function acceptCoupleInvitation(coupleId: string) {
     link: '/dashboard/couple',
   })
 
+  await pusher.trigger(`user-${couple.user1Id}`, 'couple:accepted', { coupleId })
+
   revalidatePath('/dashboard/couple')
   return { success: true }
 }
@@ -188,6 +192,8 @@ export async function denyCoupleInvitation(coupleId: string) {
     message: `${denier?.name || 'La personne invitée'} a décliné votre invitation de couple`,
     link: '/dashboard/couple',
   })
+
+  await pusher.trigger(`user-${couple.user1Id}`, 'couple:denied', { coupleId })
 
   revalidatePath('/dashboard/couple')
   return { success: true }
@@ -326,6 +332,7 @@ export async function leaveCouple(coupleId: string) {
       message: `${leavingUser?.name || 'Votre partenaire'} a quitté votre espace couple. Vous êtes maintenant célibataire.`,
       link: '/dashboard/couple',
     })
+    await pusher.trigger(`user-${otherUserId}`, 'couple:left', { coupleId })
   }
 
   revalidatePath('/dashboard/couple')

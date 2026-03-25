@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Pusher from 'pusher-js'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Heart, Users, Plus, CheckCircle, Target, MessageSquare,
@@ -135,6 +136,17 @@ export function CouplePageClient({
   const [isPending, startTransition] = useTransition()
 
   const refresh = () => startTransition(() => { router.refresh() })
+
+  // ── Real-time: auto-refresh on couple events ──────────────────────────────
+  useEffect(() => {
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu',
+    })
+    const channel = pusher.subscribe(`user-${userId}`)
+    const events = ['couple:invitation', 'couple:accepted', 'couple:denied', 'couple:left']
+    events.forEach(ev => channel.bind(ev, () => router.refresh()))
+    return () => { pusher.unsubscribe(`user-${userId}`); pusher.disconnect() }
+  }, [userId, router])
 
   // ── If user has a pending invitation to accept ───────────────────────────
   if (pendingInvitation && !couple) {
@@ -448,7 +460,7 @@ function NoCoupleScreen({
 
 // ─── Active Couple Screen ──────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'questions' | 'goals' | 'checkin' | 'reflections' | 'roadmaps' | 'archives'
+type TabId = 'overview' | 'questions' | 'goals' | 'checkin' | 'reflections' | 'roadmaps'
 
 function ActiveCoupleScreen({
   couple, categories, userId, coupleRoadmaps, availableRoadmaps, archivedCouples, unreadMessages, onRefresh,
@@ -501,7 +513,7 @@ function ActiveCoupleScreen({
     { id: 'checkin', label: 'Check-in', icon: TrendingUp },
     { id: 'reflections', label: 'Réflexions', icon: MessageSquare },
     { id: 'roadmaps', label: 'Roadmaps', icon: Compass, badge: coupleRoadmaps.length },
-    ...(archivedCouples.length > 0 ? [{ id: 'archives' as TabId, label: 'Archives', icon: Archive }] : []),
+
   ]
 
   const openRoadmap = (cr: CoupleRoadmapType) => {
@@ -973,47 +985,7 @@ function ActiveCoupleScreen({
           )}
 
           {/* ARCHIVES */}
-          {tab === 'archives' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Archive size={16} className="text-gray-400" />
-                <h2 className="font-bold text-gray-700">Espaces couple archivés</h2>
-              </div>
-              {archivedCouples.map(ac => {
-                const p = ac.user1.id !== userId ? ac.user1 : ac.user2
-                return (
-                  <Card key={ac.id} className="p-5">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="flex -space-x-2">
-                        <Avatar src={ac.user1.avatar} name={ac.user1.name} size="md" className="ring-2 ring-white" />
-                        <Avatar src={ac.user2?.avatar} name={ac.user2?.name} size="md" className="ring-2 ring-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">{ac.user1.name} & {ac.user2?.name}</p>
-                        <p className="text-xs text-gray-400 flex items-center gap-1">
-                          <Archive size={10} /> Archivé le {ac.archivedAt ? new Date(ac.archivedAt).toLocaleDateString('fr-FR') : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 text-center">
-                      <div className="flex-1 bg-gray-50 rounded-xl p-2.5">
-                        <p className="font-bold text-gray-700">{ac.goals.length}</p>
-                        <p className="text-xs text-gray-400">Objectifs</p>
-                      </div>
-                      <div className="flex-1 bg-gray-50 rounded-xl p-2.5">
-                        <p className="font-bold text-gray-700">{ac.checkins.length}</p>
-                        <p className="text-xs text-gray-400">Check-ins</p>
-                      </div>
-                      <div className="flex-1 bg-gray-50 rounded-xl p-2.5">
-                        <p className="font-bold text-gray-700">{ac.reflections.length}</p>
-                        <p className="text-xs text-gray-400">Réflexions</p>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
+
 
         </motion.div>
       </AnimatePresence>

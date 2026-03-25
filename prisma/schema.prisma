@@ -425,3 +425,12 @@ model Message {
   couple    Couple   @relation(fields: [coupleId], references: [id], onDelete: Cascade)
   sender    User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 }
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
