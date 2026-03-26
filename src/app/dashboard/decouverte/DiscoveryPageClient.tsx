@@ -90,6 +90,7 @@ export function DiscoveryPageClient({
   activeRoadmaps: ActiveRoadmap[]
   userId: string
 }) {
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'explorer' | 'mes-roadmaps' | 'creer'>('explorer')
@@ -168,10 +169,13 @@ export function DiscoveryPageClient({
     try {
       const formData = new FormData()
       formData.append('file', pdfFile)
+      console.log("g")
       const res = await fetch('/api/roadmap-from-pdf', { method: 'POST', body: formData })
+
       const data = await res.json()
+      console.log(data.plan)
       if (!data.success) { setPdfError(data.error || 'Erreur inconnue'); return }
-      const result = await createCustomRoadmap(data.roadmap)
+      const result = await createCustomRoadmap(data.plan)
       if (result.success) {
         setPdfModal(false)
         setPdfFile(null)
@@ -265,8 +269,9 @@ export function DiscoveryPageClient({
 
       {tab === 'explorer' && (
         <div className="space-y-8">
-          {(['IKIGAI', 'CHRISTIAN', 'SCIENTIFIC'] as const).map(cat => {
-            const roadmapsInCat = allRoadmaps.filter(r => r.category === cat)
+          {([''] as const).map(cat => {
+            const roadmapsInCat = allRoadmaps //.filter(r => r.category === cat)
+            
             if (roadmapsInCat.length === 0) return null
             return (
               <div key={cat}>

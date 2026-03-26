@@ -218,7 +218,7 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
 
       {/* AI Plan Modal */}
       <Modal open={aiOpen} onClose={() => { setAiOpen(false); if (!aiPlan) setAiForm({ description: '', budget: '', style: '', guestCount: '', date: '' }) }} title="Générer votre plan de mariage IA">
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-scroll h-[400px] md:flex-1">
           {!aiPlan ? (
             <>
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-xl p-3 text-sm text-purple-700 flex items-start gap-2">
