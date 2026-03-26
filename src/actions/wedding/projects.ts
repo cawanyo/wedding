@@ -119,3 +119,18 @@ export async function inviteMember(projectId: string, email: string) {
   revalidatePath(`/dashboard/wedding/${projectId}`)
   return { success: true }
 }
+
+export async function reorderSteps(projectId: string, orderedIds: string[]) {
+  for (let i = 0; i < orderedIds.length; i++) {
+    await prisma.weddingStep.update({ where: { id: orderedIds[i] }, data: { order: i } })
+  }
+  revalidatePath('/dashboard/wedding/' + projectId)
+  return { success: true }
+}
+
+export async function reorderTasks(stepId: string, orderedIds: string[]) {
+  // Task model has no order field — revalidate only
+  const step = await prisma.weddingStep.findUnique({ where: { id: stepId }, select: { projectId: true } })
+  if (step) revalidatePath('/dashboard/wedding/' + step.projectId)
+  return { success: true }
+}

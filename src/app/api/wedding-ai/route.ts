@@ -3,14 +3,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-// Initialize the SDK with your API Key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   const apiKey = process.env.GROK_API_KEY
+  console.log('GROK_API_KEY loaded:', !!apiKey) // Log to confirm if the key is loaded
   if (!apiKey) return NextResponse.json({ error: 'API_KEY non configurée' }, { status: 500 })
 
   try {
@@ -64,6 +62,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.7
     }),
   });
+
   const data = await response.json();
   const plan = JSON.parse(data.choices[0].message.content);
   return NextResponse.json({ success: true, plan });

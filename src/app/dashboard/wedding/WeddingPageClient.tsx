@@ -54,12 +54,13 @@ const VENDOR_ICONS: Record<string, React.ElementType> = {
 }
 
 type AIPlan = {
-  overview: string
-  budgetBreakdown: { category: string; percentage: number; estimatedAmount: number; notes: string }[]
+  title: string
+  description: string
+  budgetBreakdown: { category: string; percentage: number; estimatedAmount: number; tips: string }[]
   timeline: { period: string; tasks: string[] }[]
-  keyVendors: { type: string; description: string; budgetRange: string }[]
+  keyVendors: { type: string; description: string; budgetTip: string }[]
   personalizedTips: string[]
-  romanticIdeas: string[]
+  inspirationMoodboard: string[]
 }
 
 export function WeddingPageClient({ projects }: { projects: Project[] }) {
@@ -68,6 +69,7 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
   const [aiForm, setAiForm] = useState({ description: '', budget: '', style: '', guestCount: '', date: '' })
   const [aiPlan, setAiPlan] = useState<AIPlan | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [aiCreating, setAiCreating] = useState(false)
   const [aiError, setAiError] = useState('')
   const [expandedSection, setExpandedSection] = useState<string | null>('overview')
   const router = useRouter()
@@ -109,6 +111,21 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
   }
 
   const toggle = (section: string) => setExpandedSection(prev => prev === section ? null : section)
+
+  const handleCreateFromAiPlan = async () => {
+    if (!aiPlan) return
+    setAiCreating(true)
+    const res = await createWeddingProject({
+      title: aiPlan.title,
+      description: aiPlan.description,
+      weddingDate: aiForm.date || undefined,
+    })
+    setAiCreating(false)
+    if (res.success && res.project) {
+      setAiOpen(false)
+      router.push('/dashboard/wedding/' + res.project.id)
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto w-full">
@@ -280,9 +297,9 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-4 text-white">
                 <div className="flex items-center gap-2 mb-2">
                   <Heart size={18} />
-                  <h3 className="font-bold">Vue d'ensemble</h3>
+                  <h3 className="font-bold">{aiPlan.title}</h3>
                 </div>
-                <p className="text-sm text-white/90 leading-relaxed">{aiPlan.overview}</p>
+                <p className="text-sm text-white/90 leading-relaxed">{aiPlan.description}</p>
               </div>
 
               {/* Budget Breakdown */}
@@ -304,7 +321,7 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                               <motion.div initial={{ width: 0 }} animate={{ width: `${item.percentage}%` }} className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full" />
                             </div>
-                            {item.notes && <p className="text-xs text-gray-400 mt-0.5">{item.notes}</p>}
+                            {item.tips && <p className="text-xs text-gray-400 mt-0.5">{item.tips}</p>}
                           </div>
                         ))}
                       </div>
@@ -368,7 +385,7 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
                               <div>
                                 <p className="font-medium text-sm text-gray-800">{v.type}</p>
                                 <p className="text-xs text-gray-500">{v.description}</p>
-                                <p className="text-xs text-purple-500 font-medium mt-0.5">{v.budgetRange}</p>
+                                <p className="text-xs text-purple-500 font-medium mt-0.5">{v.budgetTip}</p>
                               </div>
                             </div>
                           )
@@ -393,14 +410,14 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
                 </div>
               )}
 
-              {/* Romantic ideas */}
-              {aiPlan.romanticIdeas?.length > 0 && (
+              {/* Inspiration Moodboard */}
+              {aiPlan.inspirationMoodboard?.length > 0 && (
                 <div className="bg-pink-50 border border-pink-100 rounded-2xl p-4">
-                  <h4 className="font-semibold text-pink-700 text-sm mb-2 flex items-center gap-1"><Heart size={14} /> Idées romantiques</h4>
+                  <h4 className="font-semibold text-pink-700 text-sm mb-2 flex items-center gap-1"><Heart size={14} /> Inspiration & ambiance</h4>
                   <ul className="space-y-1.5">
-                    {aiPlan.romanticIdeas.map((idea, i) => (
+                    {aiPlan.inspirationMoodboard.map((idea, i) => (
                       <li key={i} className="text-xs text-pink-800 flex items-start gap-1.5">
-                        <span className="text-pink-400">💕</span>{idea}
+                        <span className="text-pink-400">•</span>{idea}
                       </li>
                     ))}
                   </ul>
@@ -411,8 +428,8 @@ export function WeddingPageClient({ projects }: { projects: Project[] }) {
                 <Button variant="ghost" onClick={() => setAiPlan(null)} className="flex-1">
                   <X size={14} /> Recommencer
                 </Button>
-                <Button onClick={() => { setAiOpen(false); setCreateOpen(true) }} className="flex-1">
-                  <Plus size={14} /> Créer mon projet
+                <Button onClick={handleCreateFromAiPlan} disabled={aiCreating} className="flex-1">
+                  {aiCreating ? <><Loader2 size={14} className="animate-spin" /> Création...</> : <><Plus size={14} /> Créer mon projet</>}
                 </Button>
               </div>
             </div>

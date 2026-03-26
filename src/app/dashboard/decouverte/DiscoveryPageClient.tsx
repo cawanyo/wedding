@@ -7,7 +7,7 @@ import {
   Compass, Plus, ChevronRight, ChevronDown, ChevronLeft,
   BookOpen, Lightbulb, HelpCircle, Sparkles, CheckCircle2,
   Lock, X, Upload, Loader2, PenLine, Layers, Star,
-  ArrowRight, Trophy, Target
+  ArrowRight, Trophy, Target, Search, ChevronUp, CheckCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -116,8 +116,18 @@ export function DiscoveryPageClient({
     ],
   })
 
+  const [searchQuery, setSearchQuery] = useState('')
+  const [pdfPreview, setPdfPreview] = useState<any>(null)
+
   const allRoadmaps = [...publicRoadmaps, ...userRoadmaps]
   const activeRoadmapIds = new Set(activeRoadmaps.map(a => a.roadmapId))
+
+  const filteredRoadmaps = allRoadmaps.filter(r =>
+    !searchQuery ||
+    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    CATEGORY_LABELS[r.category]?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const openRoadmap = (roadmapId: string) => {
     const existing = activeRoadmaps.find(a => a.roadmapId === roadmapId)
@@ -175,12 +185,9 @@ export function DiscoveryPageClient({
       const data = await res.json()
       console.log(data.plan)
       if (!data.success) { setPdfError(data.error || 'Erreur inconnue'); return }
-      const result = await createCustomRoadmap(data.plan)
-      if (result.success) {
-        setPdfModal(false)
-        setPdfFile(null)
-        startTransition(() => router.refresh())
-      }
+      setPdfPreview(data.plan)
+      setPdfModal(false)
+      setPdfFile(null)
     } catch {
       setPdfError('Erreur lors du traitement du PDF')
     } finally {
@@ -269,17 +276,32 @@ export function DiscoveryPageClient({
 
       {tab === 'explorer' && (
         <div className="space-y-8">
+          <div className="relative mb-4">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
+              placeholder="Rechercher un roadmap par titre ou thème..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
           {([''] as const).map(cat => {
-            const roadmapsInCat = allRoadmaps //.filter(r => r.category === cat)
+            const roadmapsInCat = filteredRoadmaps
             
-            if (roadmapsInCat.length === 0) return null
+            if (roadmapsInCat.length === 0) return (
+              <div key={cat} className="text-center py-12">
+                <Search size={40} className="mx-auto text-gray-200 mb-3" />
+                <p className="text-gray-400 text-sm">Aucun roadmap trouvé pour "{searchQuery}"</p>
+              </div>
+            )
             return (
               <div key={cat}>
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-lg font-bold text-gray-900">{CATEGORY_LABELS[cat]}</span>
                   <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{roadmapsInCat.length} parcours</span>
                 </div>
-                <StaggerChildren className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <StaggerChildren className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {roadmapsInCat.map(roadmap => (
                     <StaggerItem key={roadmap.id}>
                       <RoadmapCard
@@ -301,7 +323,7 @@ export function DiscoveryPageClient({
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg font-bold text-gray-900">Mes roadmaps personnels</span>
               </div>
-              <StaggerChildren className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <StaggerChildren className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {userRoadmaps.map(roadmap => (
                   <StaggerItem key={roadmap.id}>
                     <RoadmapCard
@@ -329,7 +351,7 @@ export function DiscoveryPageClient({
               <Button className="mt-4" onClick={() => setTab('explorer')}>Explorer les parcours</Button>
             </div>
           ) : (
-            <StaggerChildren className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <StaggerChildren className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeRoadmaps.map(ar => {
                 const totalItems = ar.roadmap.sections.reduce((s, sec) => s + sec.items.filter(i => i.type === 'QUESTION' || i.type === 'REFLECTION' || i.type === 'EXERCISE').length, 0)
                 const answeredItems = ar.answers.length
@@ -381,6 +403,28 @@ export function DiscoveryPageClient({
           )}
         </div>
       )}
+
+      <Modal open={!!pdfPreview} onClose={() => setPdfPreview(null)} title="Aperçu du roadmap généré">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-4 text-white">
+            <span className="text-3xl">{pdfPreview?.icon || '📄'}</span>
+            <h3 className="font-bold text-lg mt-1">{pdfPreview?.title}</h3>
+            <p className="text-white/80 text-sm mt-1">{pdfPreview?.description}</p>
+          </div>
+          {pdfPreview?.sections?.map((s: any, i: number) => (
+            <CollapsibleSection key={i} title={`${i + 1}. ${s.title}`} items={s.items} />
+          ))}
+        </div>
+        <div className="flex gap-3 mt-4">
+          <Button variant="ghost" onClick={() => setPdfPreview(null)} className="flex-1">Annuler</Button>
+          <Button onClick={async () => {
+            const res = await createCustomRoadmap(pdfPreview)
+            if (res.success) { setPdfPreview(null); startTransition(() => router.refresh()) }
+          }} className="flex-1">
+            <CheckCircle size={14} /> Créer ce roadmap
+          </Button>
+        </div>
+      </Modal>
 
       <Modal open={pdfModal} onClose={() => setPdfModal(false)} title="Créer un roadmap depuis un PDF">
         <div className="space-y-4">
@@ -565,6 +609,28 @@ export function DiscoveryPageClient({
           </div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+function CollapsibleSection({ title, items }: { title: string; items: any[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <button onClick={() => setOpen(v => !v)} className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        {title}
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      {open && (
+        <div className="px-4 pb-3 space-y-2">
+          {items?.map((item: any, j: number) => (
+            <div key={j} className="text-xs bg-gray-50 rounded-lg px-3 py-2">
+              <span className="font-medium text-gray-600">{item.type}: </span>
+              <span className="text-gray-500">{item.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

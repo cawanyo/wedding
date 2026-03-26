@@ -487,6 +487,13 @@ function ActiveCoupleScreen({
   const [reflectionForm, setReflectionForm] = useState({ mood: 5, note: '', gratitude: '' })
   const [activeAnswerQ, setActiveAnswerQ] = useState<string | null>(null)
   const [answerText, setAnswerText] = useState('')
+  const [questionView, setQuestionView] = useState<'categories' | 'questions' | 'discussion'>('categories')
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [activeQuestion, setActiveQuestion] = useState<Question | null>(null)
+  const [addCategoryModal, setAddCategoryModal] = useState(false)
+  const [addCategoryTitle, setAddCategoryTitle] = useState('')
+  const [addQuestionModal, setAddQuestionModal] = useState(false)
+  const [addQuestionContent, setAddQuestionContent] = useState('')
   const [copiedToken, setCopiedToken] = useState(false)
   const [activeRoadmap, setActiveRoadmap] = useState<CoupleRoadmapType | null>(null)
   const [roadmapAnswers, setRoadmapAnswers] = useState<Record<string, string>>({})
@@ -771,66 +778,37 @@ function ActiveCoupleScreen({
 
           {/* QUESTIONS */}
           {tab === 'questions' && (
-            <div className="space-y-4">
-              {categories.map(cat => (
-                <Card key={cat.id} className="overflow-hidden">
-                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-                    <h3 className="font-bold text-gray-800 text-sm">{cat.title}</h3>
-                    <p className="text-xs text-gray-400">{cat.questions.filter(q => q.answers.length > 0).length}/{cat.questions.length} répondues</p>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {cat.questions.map(q => {
-                      const myAnswer = q.answers.find(a => a.user.id === userId)
-                      const partnerAnswer = q.answers.find(a => a.user.id !== userId)
-                      const isOpen = activeAnswerQ === q.id
-                      return (
-                        <div key={q.id} className="p-4">
-                          <button onClick={() => setActiveAnswerQ(isOpen ? null : q.id)} className="flex items-start gap-3 w-full text-left">
-                            <div className={`h-6 w-6 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center ${q.answers.length === 2 ? 'bg-emerald-100' : q.answers.length === 1 ? 'bg-amber-100' : 'bg-gray-100'}`}>
-                              {q.answers.length === 2 ? <CheckCircle size={12} className="text-emerald-500" /> : q.answers.length === 1 ? <Clock size={12} className="text-amber-500" /> : <HelpCircle size={12} className="text-gray-400" />}
-                            </div>
-                            <p className="flex-1 text-sm text-gray-800 font-medium leading-snug">{q.content}</p>
-                            {isOpen ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />}
-                          </button>
-                          <AnimatePresence>
-                            {isOpen && (
-                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="pt-3 pl-9 space-y-3">
-                                  {myAnswer ? (
-                                    <div className="bg-pink-50 rounded-xl p-3">
-                                      <p className="text-xs font-bold text-pink-500 mb-1">Ma réponse</p>
-                                      <p className="text-sm text-gray-700">{myAnswer.content}</p>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <textarea
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pink-200"
-                                        rows={3}
-                                        placeholder="Votre réponse..."
-                                        value={answerText}
-                                        onChange={e => setAnswerText(e.target.value)}
-                                      />
-                                      <Button size="sm" onClick={() => handleSubmitAnswer(q.id)} disabled={!answerText.trim()} className="mt-2">
-                                        <Send size={12} /> Soumettre
-                                      </Button>
-                                    </div>
-                                  )}
-                                  {partnerAnswer && (
-                                    <div className="bg-purple-50 rounded-xl p-3">
-                                      <p className="text-xs font-bold text-purple-500 mb-1">Réponse de {partner?.name}</p>
-                                      <p className="text-sm text-gray-700">{partnerAnswer.content}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </Card>
-              ))}
+            <div>
+              {questionView === 'categories' && (
+                <CategoriesView
+                  categories={categories}
+                  userId={userId}
+                  onSelect={(cat) => { setSelectedCategory(cat); setQuestionView('questions') }}
+                  onRandomQuestion={(q, cat) => { setSelectedCategory(cat); setActiveQuestion(q); setQuestionView('discussion') }}
+                  onAddCategory={() => { setAddCategoryTitle(''); setAddCategoryModal(true) }}
+                />
+              )}
+              {questionView === 'questions' && selectedCategory && (
+                <QuestionsView
+                  category={selectedCategory}
+                  userId={userId}
+                  onLaunch={(q) => { setActiveQuestion(q); setQuestionView('discussion') }}
+                  onBack={() => setQuestionView('categories')}
+                  onAddQuestion={() => { setAddQuestionContent(''); setAddQuestionModal(true) }}
+                  categories={categories}
+                  onRandomQuestion={(q, cat) => { setSelectedCategory(cat); setActiveQuestion(q); setQuestionView('discussion') }}
+                />
+              )}
+              {questionView === 'discussion' && activeQuestion && (
+                <DiscussionView
+                  question={activeQuestion}
+                  coupleId={couple.id}
+                  userId={userId}
+                  partnerName={partner?.name || 'Partenaire'}
+                  onBack={() => setQuestionView('questions')}
+                  onRefresh={onRefresh}
+                />
+              )}
             </div>
           )}
 
@@ -1061,6 +1039,309 @@ function ActiveCoupleScreen({
           </div>
         </div>
       </Modal>
+
+      <Modal open={addCategoryModal} onClose={() => setAddCategoryModal(false)} title="Nouvelle catégorie">
+        <div className="space-y-4">
+          <Input
+            label="Titre de la catégorie"
+            placeholder="Ex: Valeurs personnelles"
+            value={addCategoryTitle}
+            onChange={e => setAddCategoryTitle(e.target.value)}
+          />
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={() => setAddCategoryModal(false)} className="flex-1">Annuler</Button>
+            <Button
+              disabled={!addCategoryTitle.trim()}
+              className="flex-1"
+              onClick={async () => {
+                if (!addCategoryTitle.trim()) return
+                await createCategory(addCategoryTitle.trim())
+                setAddCategoryModal(false)
+                setAddCategoryTitle('')
+                onRefresh()
+              }}
+            >
+              <Plus size={14} /> Créer
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={addQuestionModal} onClose={() => setAddQuestionModal(false)} title="Nouvelle question">
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Question</label>
+            <textarea
+              className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pink-200"
+              rows={3}
+              placeholder="Ex: Quelle est la valeur la plus importante pour toi ?"
+              value={addQuestionContent}
+              onChange={e => setAddQuestionContent(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={() => setAddQuestionModal(false)} className="flex-1">Annuler</Button>
+            <Button
+              disabled={!addQuestionContent.trim() || !selectedCategory}
+              className="flex-1"
+              onClick={async () => {
+                if (!addQuestionContent.trim() || !selectedCategory) return
+                await createCustomQuestion(selectedCategory.id, addQuestionContent.trim())
+                setAddQuestionModal(false)
+                setAddQuestionContent('')
+                onRefresh()
+              }}
+            >
+              <Plus size={14} /> Ajouter
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+// ─── Questions Sub-components ─────────────────────────────────────────────────
+
+function CategoriesView({
+  categories,
+  userId,
+  onSelect,
+  onRandomQuestion,
+  onAddCategory,
+}: {
+  categories: Category[]
+  userId: string
+  onSelect: (cat: Category) => void
+  onRandomQuestion: (q: Question, cat: Category) => void
+  onAddCategory: () => void
+}) {
+  const handleRandomQuestion = () => {
+    const allUnanswered = categories.flatMap(cat =>
+      cat.questions
+        .filter(q => !q.answers.find(a => a.user.id === userId))
+        .map(q => ({ question: q, category: cat }))
+    )
+    if (allUnanswered.length === 0) return
+    const { question, category } = allUnanswered[Math.floor(Math.random() * allUnanswered.length)]
+    onRandomQuestion(question, category)
+  }
+
+  const totalAnswered = categories.reduce((s, c) => s + c.questions.filter(q => q.answers.length > 0).length, 0)
+  const totalQuestions = categories.reduce((s, c) => s + c.questions.length, 0)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-gray-900">Questions de couple</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{totalAnswered}/{totalQuestions} questions discutées</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={handleRandomQuestion}>
+          <Sparkles size={14} /> Question aléatoire
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {categories.map(cat => {
+          const answered = cat.questions.filter(q => q.answers.length > 0).length
+          const total = cat.questions.length
+          const pct = total ? Math.round((answered / total) * 100) : 0
+          return (
+            <button
+              key={cat.id}
+              onClick={() => onSelect(cat)}
+              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-left hover:border-purple-200 hover:shadow-md transition-all"
+            >
+              <div className="text-2xl mb-2">💬</div>
+              <h3 className="font-bold text-gray-800 text-sm">{cat.title}</h3>
+              <p className="text-xs text-gray-400 mt-1">
+                {answered}/{total} questions discutées
+              </p>
+              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-pink-400 to-purple-500 rounded-full"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </button>
+          )
+        })}
+        <button
+          onClick={onAddCategory}
+          className="border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center text-gray-400 hover:border-purple-300 hover:text-purple-500 transition-all flex flex-col items-center justify-center min-h-[120px]"
+        >
+          <Plus size={24} className="mb-1" />
+          <p className="text-sm font-medium">Nouvelle catégorie</p>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function QuestionsView({
+  category,
+  userId,
+  onLaunch,
+  onBack,
+  onAddQuestion,
+  categories,
+  onRandomQuestion,
+}: {
+  category: Category
+  userId: string
+  onLaunch: (q: Question) => void
+  onBack: () => void
+  onAddQuestion: () => void
+  categories: Category[]
+  onRandomQuestion: (q: Question, cat: Category) => void
+}) {
+  const handleRandomQuestion = () => {
+    const allUnanswered = categories.flatMap(cat =>
+      cat.questions
+        .filter(q => !q.answers.find(a => a.user.id === userId))
+        .map(q => ({ question: q, category: cat }))
+    )
+    if (allUnanswered.length === 0) return
+    const { question, category: cat } = allUnanswered[Math.floor(Math.random() * allUnanswered.length)]
+    onRandomQuestion(question, cat)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm">
+          <ChevronLeft size={16} /> Retour
+        </button>
+        <h2 className="font-bold text-gray-900 flex-1">{category.title}</h2>
+        <Button size="sm" variant="secondary" onClick={handleRandomQuestion}>
+          <Sparkles size={14} /> Aléatoire
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {category.questions.map(q => {
+          const myAnswer = q.answers.find(a => a.user.id === userId)
+          const discussed = q.answers.length > 0
+          return (
+            <div
+              key={q.id}
+              className="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3 hover:border-purple-100 transition-all"
+            >
+              <div className={`h-6 w-6 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center ${q.answers.length >= 2 ? 'bg-emerald-100' : q.answers.length === 1 ? 'bg-amber-100' : 'bg-gray-100'}`}>
+                {q.answers.length >= 2 ? (
+                  <CheckCircle size={12} className="text-emerald-500" />
+                ) : q.answers.length === 1 ? (
+                  <Clock size={12} className="text-amber-500" />
+                ) : (
+                  <HelpCircle size={12} className="text-gray-400" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800 font-medium leading-snug">{q.content}</p>
+                {discussed && (
+                  <p className="text-xs text-gray-400 mt-1">{q.answers.length} réponse{q.answers.length > 1 ? 's' : ''}</p>
+                )}
+              </div>
+              <Button size="sm" onClick={() => onLaunch(q)} className="flex-shrink-0">
+                <MessageSquare size={12} /> Discuter
+              </Button>
+            </div>
+          )
+        })}
+        <button
+          onClick={onAddQuestion}
+          className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-3 text-center text-gray-400 hover:border-purple-300 hover:text-purple-500 transition-all flex items-center justify-center gap-2"
+        >
+          <Plus size={16} />
+          <span className="text-sm font-medium">Ajouter une question</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function DiscussionView({
+  question,
+  coupleId,
+  userId,
+  partnerName,
+  onBack,
+  onRefresh,
+}: {
+  question: Question
+  coupleId: string
+  userId: string
+  partnerName: string
+  onBack: () => void
+  onRefresh: () => void
+}) {
+  const [newMessage, setNewMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const allMessages = [...question.answers].sort((a, b) => a.id.localeCompare(b.id))
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return
+    setSending(true)
+    await submitAnswer({ questionId: question.id, coupleId, content: newMessage.trim() })
+    setNewMessage('')
+    setSending(false)
+    onRefresh()
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm flex-shrink-0">
+          <ChevronLeft size={16} /> Retour
+        </button>
+      </div>
+
+      <div className="bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl p-5 text-white">
+        <div className="flex items-center gap-2 mb-2 text-white/70 text-xs font-medium">
+          <MessageSquare size={12} /> Discussion
+        </div>
+        <p className="font-bold text-lg leading-snug">{question.content}</p>
+      </div>
+
+      <div className="space-y-3 max-h-[40vh] overflow-y-auto">
+        {allMessages.length === 0 && (
+          <div className="text-center py-8 text-gray-400 text-sm">
+            Aucune réponse pour l'instant. Lancez la discussion !
+          </div>
+        )}
+        {allMessages.map(answer => {
+          const isMe = answer.user.id === userId
+          return (
+            <div key={answer.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMe ? 'bg-gradient-to-br from-pink-500 to-purple-500 text-white rounded-br-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm shadow-sm'}`}>
+                <p className={`text-xs font-bold mb-1 ${isMe ? 'text-white/70' : 'text-purple-500'}`}>
+                  {isMe ? 'Moi' : answer.user.name || partnerName}
+                </p>
+                <p className="text-sm leading-relaxed">{answer.content}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <textarea
+          ref={inputRef}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pink-200 min-h-[80px]"
+          placeholder="Ajoutez votre réponse ou un message..."
+          value={newMessage}
+          onChange={e => setNewMessage(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleSend() }}
+        />
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-400">Cmd+Entrée pour envoyer</span>
+          <Button size="sm" onClick={handleSend} disabled={!newMessage.trim() || sending}>
+            {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+            Nouvelle réponse
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
